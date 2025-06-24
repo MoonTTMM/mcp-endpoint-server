@@ -4,7 +4,6 @@ WebSocket处理器
 """
 
 import json
-import asyncio
 from typing import Optional, Any
 from urllib.parse import parse_qs, urlparse
 from websockets.server import WebSocketServerProtocol

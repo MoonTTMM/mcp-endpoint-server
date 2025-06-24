@@ -26,6 +26,11 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
     logger.info("MCP Endpoint Server 正在启动...")
+    logger.info(f"======================================================")
+    logger.info(
+        f"接口地址: http://{config.get('server', 'host', '127.0.0.1')}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
+    )
+    logger.info("=======上面的地址是websocket协议地址，请勿用浏览器访问=======")
     yield
     # 关闭时
     logger.info("MCP Endpoint Server 已关闭")
@@ -63,10 +68,15 @@ async def root():
 
 
 @app.get("/mcp_endpoint/health")
-async def health_check():
+async def health_check(key: str = None):
     """健康检查"""
+    # 验证key参数
+    expected_key = config.get("server", "key", "")
+    if not key or key != expected_key:
+        return {"status": "key_error"}
+
     stats = connection_manager.get_connection_stats()
-    return {"status": "healthy", "connections": stats}
+    return {"status": "success", "connections": stats}
 
 
 @app.websocket("/mcp_endpoint/mcp/")
