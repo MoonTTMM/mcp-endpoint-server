@@ -4,6 +4,7 @@
 
 import os
 import configparser
+import uuid
 from typing import Optional
 from pathlib import Path
 
@@ -20,9 +21,53 @@ class ConfigManager:
         """加载配置文件"""
         if os.path.exists(self.config_file):
             self.config.read(self.config_file, encoding="utf-8")
+            # 检查并生成key
+            self._check_and_generate_key()
         else:
-            # 如果配置文件不存在，使用默认配置
+            # 如果配置文件不存在，从根目录拷贝
+            self._copy_config_from_root()
+
+    def _copy_config_from_root(self):
+        """从根目录拷贝配置文件到data目录"""
+        root_config = "mcp-endpoint-server.cfg"
+        if os.path.exists(root_config):
+            # 确保data目录存在
+            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+
+            # 拷贝配置文件
+            import shutil
+
+            shutil.copy2(root_config, self.config_file)
+
+            # 重新加载配置
+            self.config.read(self.config_file, encoding="utf-8")
+            # 检查并生成key
+            self._check_and_generate_key()
+        else:
+            # 如果根目录也没有配置文件，则创建默认配置
             self._create_default_config()
+
+    def _check_and_generate_key(self):
+        """检查key是否存在且长度足够，如果不足则生成新的"""
+        try:
+            current_key = self.config.get("server", "key", fallback="")
+            if not current_key or len(current_key) < 32:
+                # 生成32位随机密码
+                new_key = self._generate_random_key()
+                self.config.set("server", "key", new_key)
+
+                # 保存到配置文件
+                with open(self.config_file, "w", encoding="utf-8") as f:
+                    self.config.write(f)
+
+                print(f"已自动生成新的32位密钥: {new_key}")
+        except Exception as e:
+            print(f"检查密钥时发生错误: {e}")
+
+    def _generate_random_key(self) -> str:
+        """生成指定长度的随机密钥"""
+        # 使用UUID生成密钥，移除连字符
+        return str(uuid.uuid4()).replace("-", "")
 
     def _create_default_config(self):
         """创建默认配置"""
@@ -31,6 +76,7 @@ class ConfigManager:
             "port": "8004",
             "debug": "false",
             "log_level": "INFO",
+            "key": self._generate_random_key(),  # 生成默认密钥
         }
 
         self.config["websocket"] = {
