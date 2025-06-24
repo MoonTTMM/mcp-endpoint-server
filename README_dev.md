@@ -1,5 +1,25 @@
 # MCP Endpoint Server
 
+## 开发说明
+
+### 项目结构
+```
+mcp-endpoint-server/
+├── src/
+│   ├── core/                 # 核心模块
+│   │   └── connection_manager.py
+│   ├── handlers/             # 处理器
+│   │   └── websocket_handler.py
+│   ├── utils/                # 工具模块
+│   │   ├── config.py
+│   │   └── logger.py
+│   └── server.py             # 主服务器
+├── data/                     # 配置文件目录
+├── logs/                     # 日志目录
+├── main.py                   # 主入口
+├── requirements.txt          # 依赖文件
+└── README.md                 # 说明文档
+```
 ## 安装依赖
 
 ```bash
@@ -29,23 +49,3 @@ python main.py
 {"id":10,"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculator","arguments":{"python_expression":"130000 * 130000"},"serialNumber":null}}
 ```
 
-## 开发说明
-
-### 项目结构
-```
-mcp-endpoint-server/
-├── src/
-│   ├── core/                 # 核心模块
-│   │   └── connection_manager.py
-│   ├── handlers/             # 处理器
-│   │   └── websocket_handler.py
-│   ├── utils/                # 工具模块
-│   │   ├── config.py
-│   │   └── logger.py
-│   └── server.py             # 主服务器
-├── data/                     # 配置文件目录
-├── logs/                     # 日志目录
-├── main.py                   # 主入口
-├── requirements.txt          # 依赖文件
-└── README.md                 # 说明文档
-```
