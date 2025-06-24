@@ -3,22 +3,63 @@ MCP Endpoint Server
 主服务器文件
 """
 
-import asyncio
-import signal
 import sys
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+import json
+import signal
 import uvicorn
-from websockets.server import serve
-
-from .core.connection_manager import connection_manager
-from .handlers.websocket_handler import websocket_handler
 from .utils.config import config
 from .utils.logger import get_logger
+from .utils.aes_utils import decrypt
+from .utils.jsonrpc import (
+    JSONRPCProtocol,
+    create_connection_established_message,
+    create_authentication_error,
+)
+from src.utils.util import get_local_ip
+from contextlib import asynccontextmanager
+from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+from .core.connection_manager import connection_manager
+from .handlers.websocket_handler import websocket_handler
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 logger = get_logger()
+
+
+async def validate_token_and_get_agent_id(websocket: WebSocket) -> str:
+    """
+    验证token并获取agentId的公共方法
+
+    Args:
+        websocket: WebSocket连接对象
+
+    Returns:
+        str: 验证成功返回agentId，失败返回None
+    """
+    token = websocket.query_params.get("token")
+    if not token:
+        logger.error("缺少token参数")
+        await websocket.close(code=1008, reason="缺少token参数")
+        return None
+
+    data = decrypt(config.get("server", "key", ""), token)
+    if not data:
+        logger.error(f"token解密失败: {token}")
+        await websocket.close(code=1008, reason="token解密失败")
+        return None
+
+    try:
+        data = json.loads(data)
+        agent_id = data.get("agentId")
+        if not agent_id:
+            logger.error("无对应agentId")
+            await websocket.close(code=1008, reason="无对应agentId")
+            return None
+        return agent_id
+    except json.JSONDecodeError:
+        logger.error("token数据格式错误")
+        await websocket.close(code=1008, reason="token数据格式错误")
+        return None
 
 
 @asynccontextmanager
@@ -27,8 +68,9 @@ async def lifespan(app: FastAPI):
     # 启动时
     logger.info("MCP Endpoint Server 正在启动...")
     logger.info(f"======================================================")
+    local_ip = get_local_ip()
     logger.info(
-        f"接口地址: http://{config.get('server', 'host', '127.0.0.1')}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
+        f"接口地址: http://{local_ip}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
     )
     logger.info("=======上面的地址是websocket协议地址，请勿用浏览器访问=======")
     yield
@@ -64,7 +106,14 @@ async def redirect_root():
 @app.get("/mcp_endpoint/")
 async def root():
     """根路径"""
-    return {"message": "MCP Endpoint Server", "version": "1.0.0", "status": "running"}
+    response = JSONRPCProtocol.create_success_response(
+        result={
+            "message": "MCP Endpoint Server",
+            "version": "1.0.0",
+            "status": "running",
+        }
+    )
+    return JSONRPCProtocol.to_dict(response)
 
 
 @app.get("/mcp_endpoint/health")
@@ -73,10 +122,18 @@ async def health_check(key: str = None):
     # 验证key参数
     expected_key = config.get("server", "key", "")
     if not key or key != expected_key:
-        return {"status": "key_error"}
+        response = JSONRPCProtocol.create_error_response(
+            error_code=JSONRPCProtocol.AUTHENTICATION_ERROR,
+            error_message="密钥验证失败",
+            error_data={"details": "提供的密钥无效或缺失"},
+        )
+        return JSONRPCProtocol.to_dict(response)
 
     stats = connection_manager.get_connection_stats()
-    return {"status": "success", "connections": stats}
+    response = JSONRPCProtocol.create_success_response(
+        result={"status": "success", "connections": stats}
+    )
+    return JSONRPCProtocol.to_dict(response)
 
 
 @app.websocket("/mcp_endpoint/mcp/")
@@ -84,30 +141,28 @@ async def websocket_tool_endpoint(websocket: WebSocket):
     """工具端WebSocket端点"""
     await websocket.accept()
 
-    # 获取userId参数
-    user_id = websocket.query_params.get("userId")
-    if not user_id:
-        await websocket.close(code=1008, reason="缺少userId参数")
+    # 获取agentId参数
+    agent_id = await validate_token_and_get_agent_id(websocket)
+    if not agent_id:
         return
 
     try:
         # 注册连接
-        await connection_manager.register_tool_connection(user_id, websocket)
+        await connection_manager.register_tool_connection(agent_id, websocket)
 
         # 发送连接确认消息
-        await websocket.send_text(
-            '{"type": "connection_established", "message": "工具端连接已建立", "user_id": "'
-            + user_id
-            + '"}'
+        connection_message = create_connection_established_message(
+            agent_id, "工具端连接已建立"
         )
+        await websocket.send_text(connection_message)
 
-        logger.info(f"工具端连接已建立: {user_id}")
+        logger.info(f"工具端连接已建立: {agent_id}")
 
         # 处理消息
         while True:
             try:
                 message = await websocket.receive_text()
-                await websocket_handler._handle_tool_message(user_id, message)
+                await websocket_handler._handle_tool_message(agent_id, message)
             except WebSocketDisconnect:
                 break
             except Exception as e:
@@ -117,8 +172,8 @@ async def websocket_tool_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"处理工具端连接时发生错误: {e}")
     finally:
-        await connection_manager.unregister_tool_connection(user_id)
-        logger.info(f"工具端连接已关闭: {user_id}")
+        await connection_manager.unregister_tool_connection(agent_id)
+        logger.info(f"工具端连接已关闭: {agent_id}")
 
 
 @app.websocket("/mcp_endpoint/call/")
@@ -126,30 +181,28 @@ async def websocket_robot_endpoint(websocket: WebSocket):
     """小智端WebSocket端点"""
     await websocket.accept()
 
-    # 获取userId参数
-    user_id = websocket.query_params.get("userId")
-    if not user_id:
-        await websocket.close(code=1008, reason="缺少userId参数")
+    # 获取agentId参数
+    agent_id = await validate_token_and_get_agent_id(websocket)
+    if not agent_id:
         return
 
     try:
         # 注册连接
-        await connection_manager.register_robot_connection(user_id, websocket)
+        await connection_manager.register_robot_connection(agent_id, websocket)
 
         # 发送连接确认消息
-        await websocket.send_text(
-            '{"type": "connection_established", "message": "小智端连接已建立", "user_id": "'
-            + user_id
-            + '"}'
+        connection_message = create_connection_established_message(
+            agent_id, "小智端连接已建立"
         )
+        await websocket.send_text(connection_message)
 
-        logger.info(f"小智端连接已建立: {user_id}")
+        logger.info(f"小智端连接已建立: {agent_id}")
 
         # 处理消息
         while True:
             try:
                 message = await websocket.receive_text()
-                await websocket_handler._handle_robot_message(user_id, message)
+                await websocket_handler._handle_robot_message(agent_id, message)
             except WebSocketDisconnect:
                 break
             except Exception as e:
@@ -159,8 +212,8 @@ async def websocket_robot_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"处理小智端连接时发生错误: {e}")
     finally:
-        await connection_manager.unregister_robot_connection(user_id)
-        logger.info(f"小智端连接已关闭: {user_id}")
+        await connection_manager.unregister_robot_connection(agent_id)
+        logger.info(f"小智端连接已关闭: {agent_id}")
 
 
 def signal_handler(signum, frame):

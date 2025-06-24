@@ -5,4 +5,5 @@ python-multipart==0.0.6
 pydantic==2.5.0
 python-dotenv==1.0.0
 configparser==6.0.0
-asyncio-mqtt==0.16.1 
+asyncio-mqtt==0.16.1
+pycryptodome==3.23.0
