@@ -126,8 +126,6 @@ class ConnectionManager:
             "robot_connections": len(self.robot_connections),
             "total_connections": len(self.tool_connections)
             + len(self.robot_connections),
-            "tool_user_ids": list(self.tool_connections.keys()),
-            "robot_user_ids": list(self.robot_connections.keys()),
         }
 
     def is_tool_connected(self, user_id: str) -> bool:

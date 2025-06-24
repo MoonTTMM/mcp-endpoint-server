@@ -9,7 +9,7 @@ import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 import uvicorn
 from websockets.server import serve
 
@@ -51,26 +51,25 @@ if config.getboolean("security", "enable_cors", True):
 
 
 @app.get("/")
+async def redirect_root():
+    """根路径重定向到 /mcp_endpoint/"""
+    return RedirectResponse(url="/mcp_endpoint/")
+
+
+@app.get("/mcp_endpoint/")
 async def root():
     """根路径"""
     return {"message": "MCP Endpoint Server", "version": "1.0.0", "status": "running"}
 
 
-@app.get("/health")
+@app.get("/mcp_endpoint/health")
 async def health_check():
     """健康检查"""
     stats = connection_manager.get_connection_stats()
     return {"status": "healthy", "connections": stats}
 
 
-@app.get("/stats")
-async def get_stats():
-    """获取连接统计信息"""
-    stats = connection_manager.get_connection_stats()
-    return {"status": "success", "data": stats}
-
-
-@app.websocket("/mcp/")
+@app.websocket("/mcp_endpoint/mcp/")
 async def websocket_tool_endpoint(websocket: WebSocket):
     """工具端WebSocket端点"""
     await websocket.accept()
@@ -112,7 +111,7 @@ async def websocket_tool_endpoint(websocket: WebSocket):
         logger.info(f"工具端连接已关闭: {user_id}")
 
 
-@app.websocket("/call_mcp/")
+@app.websocket("/mcp_endpoint/call/")
 async def websocket_robot_endpoint(websocket: WebSocket):
     """小智端WebSocket端点"""
     await websocket.accept()
