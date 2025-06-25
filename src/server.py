@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         f"接口地址: http://{local_ip}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
     )
-    logger.info("=======上面的地址是websocket协议地址，请勿用浏览器访问=======")
+    logger.info("=======上面的地址是MCP接入点地址，请勿泄露给任何人============")
     yield
     # 关闭时
     logger.info("MCP Endpoint Server 已关闭")
@@ -242,6 +242,7 @@ def main():
         port=port,
         reload=debug,
         log_level=config.get("server", "log_level", "INFO").lower(),
+        access_log=False,
     )
 
 
