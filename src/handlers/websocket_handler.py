@@ -49,7 +49,7 @@ class WebSocketHandler:
                     logger.error(f"没有特定目标，无法转发消息")
             except json.JSONDecodeError:
                 # 如果不是JSON格式，按原来的方式处理
-                logger.error(f"工具端消息不是有效的JSON格式: {message}")
+                logger.error(f"由于消息不是JSON格式，已忽略: {message}")
 
         except json.JSONDecodeError:
             logger.error(f"工具端消息格式错误: {message}")
