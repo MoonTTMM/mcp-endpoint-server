@@ -178,16 +178,19 @@ async def websocket_robot_endpoint(websocket: WebSocket):
         return
 
     try:
-        # 注册连接
-        await connection_manager.register_robot_connection(agent_id, websocket)
-
-        logger.info(f"小智端连接已建立: {agent_id}")
+        # 注册连接并获取UUID
+        connection_uuid = await connection_manager.register_robot_connection(
+            agent_id, websocket
+        )
+        logger.info(f"小智端连接已建立: {agent_id} (UUID: {connection_uuid})")
 
         # 处理消息
         while True:
             try:
                 message = await websocket.receive_text()
-                await websocket_handler._handle_robot_message(agent_id, message)
+                await websocket_handler._handle_robot_message(
+                    agent_id, message, connection_uuid
+                )
             except WebSocketDisconnect:
                 break
             except Exception as e:
@@ -197,8 +200,8 @@ async def websocket_robot_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"处理小智端连接时发生错误: {e}")
     finally:
-        await connection_manager.unregister_robot_connection(agent_id)
-        logger.info(f"小智端连接已关闭: {agent_id}")
+        await connection_manager.unregister_robot_connection(connection_uuid)
+        logger.info(f"小智端连接已关闭: {agent_id} (UUID: {connection_uuid})")
 
 
 def signal_handler(signum, frame):
