@@ -12,8 +12,6 @@ from .utils.logger import get_logger
 from .utils.aes_utils import decrypt
 from .utils.jsonrpc import (
     JSONRPCProtocol,
-    create_connection_established_message,
-    create_authentication_error,
 )
 from src.utils.util import get_local_ip
 from contextlib import asynccontextmanager
@@ -149,13 +147,6 @@ async def websocket_tool_endpoint(websocket: WebSocket):
     try:
         # 注册连接
         await connection_manager.register_tool_connection(agent_id, websocket)
-
-        # 发送连接确认消息
-        connection_message = create_connection_established_message(
-            agent_id, "工具端连接已建立"
-        )
-        await websocket.send_text(connection_message)
-
         logger.info(f"工具端连接已建立: {agent_id}")
 
         # 处理消息
@@ -189,12 +180,6 @@ async def websocket_robot_endpoint(websocket: WebSocket):
     try:
         # 注册连接
         await connection_manager.register_robot_connection(agent_id, websocket)
-
-        # 发送连接确认消息
-        connection_message = create_connection_established_message(
-            agent_id, "小智端连接已建立"
-        )
-        await websocket.send_text(connection_message)
 
         logger.info(f"小智端连接已建立: {agent_id}")
 

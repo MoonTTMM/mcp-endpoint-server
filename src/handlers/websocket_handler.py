@@ -11,8 +11,6 @@ from websockets.exceptions import ConnectionClosed
 from ..core.connection_manager import connection_manager
 from ..utils.logger import get_logger
 from ..utils.jsonrpc import (
-    JSONRPCProtocol,
-    create_connection_established_message,
     create_tool_not_connected_error,
     create_forward_failed_error,
 )
@@ -25,78 +23,6 @@ class WebSocketHandler:
 
     def __init__(self):
         pass
-
-    async def handle_tool_connection(
-        self, websocket: WebSocketServerProtocol, path: str
-    ):
-        """处理工具端连接"""
-        try:
-            # 解析URL参数获取agentId
-            agent_id = self._extract_agent_id(path)
-            if not agent_id:
-                await websocket.close(1008, "缺少agentId参数")
-                return
-
-            # 注册连接
-            await connection_manager.register_tool_connection(agent_id, websocket)
-
-            # 发送连接确认消息
-            connection_message = create_connection_established_message(
-                agent_id, "工具端连接已建立"
-            )
-            await websocket.send(connection_message)
-
-            logger.info(f"工具端连接已建立: {agent_id}")
-
-            # 处理消息
-            async for message in websocket:
-                await self._handle_tool_message(agent_id, message)
-
-        except ConnectionClosed:
-            logger.info(
-                f"工具端连接已关闭: {agent_id if 'agent_id' in locals() else 'unknown'}"
-            )
-        except Exception as e:
-            logger.error(f"处理工具端连接时发生错误: {e}")
-        finally:
-            if "agent_id" in locals():
-                await connection_manager.unregister_tool_connection(agent_id)
-
-    async def handle_robot_connection(
-        self, websocket: WebSocketServerProtocol, path: str
-    ):
-        """处理小智端连接"""
-        try:
-            # 解析URL参数获取agentId
-            agent_id = self._extract_agent_id(path)
-            if not agent_id:
-                await websocket.close(1008, "缺少agentId参数")
-                return
-
-            # 注册连接
-            await connection_manager.register_robot_connection(agent_id, websocket)
-
-            # 发送连接确认消息
-            connection_message = create_connection_established_message(
-                agent_id, "小智端连接已建立"
-            )
-            await websocket.send(connection_message)
-
-            logger.info(f"小智端连接已建立: {agent_id}")
-
-            # 处理消息
-            async for message in websocket:
-                await self._handle_robot_message(agent_id, message)
-
-        except ConnectionClosed:
-            logger.info(
-                f"小智端连接已关闭: {agent_id if 'agent_id' in locals() else 'unknown'}"
-            )
-        except Exception as e:
-            logger.error(f"处理小智端连接时发生错误: {e}")
-        finally:
-            if "agent_id" in locals():
-                await connection_manager.unregister_robot_connection(agent_id)
 
     async def _handle_tool_message(self, agent_id: str, message: str):
         """处理工具端消息"""

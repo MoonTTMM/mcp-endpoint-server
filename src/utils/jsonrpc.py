@@ -178,21 +178,6 @@ class JSONRPCProtocol:
         return request is not None and request.id is None
 
 
-# 便捷函数
-def create_connection_established_message(
-    agent_id: str, message: str = "连接已建立"
-) -> str:
-    """创建连接建立成功的消息"""
-    response = JSONRPCProtocol.create_success_response(
-        result={
-            "type": "connection_established",
-            "message": message,
-            "agent_id": agent_id,
-        }
-    )
-    return JSONRPCProtocol.to_json(response, ensure_ascii=False)
-
-
 def create_tool_not_connected_error(
     request_id: Optional[Union[str, int]] = None, agent_id: Optional[str] = None
 ) -> str:
