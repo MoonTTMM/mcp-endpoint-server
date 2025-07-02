@@ -17,25 +17,9 @@
 
 ![原理图](./docs/schematic.png)
 
-## docker运行
+## 接入教程
 
-安装好docker后，拉取本项目源码
-
-```bash
-# 进入本项目源码根目录
-cd mcp-endpoint-server
-
-# 清除缓存
-docker compose -f docker-compose.yml down
-docker stop mcp-endpoint-server
-docker rm mcp-endpoint-server
-docker rmi ghcr.nju.edu.cn/xinnan-tech/mcp-endpoint-server:latest
-
-# 启动docker容器
-docker compose -f docker-compose.yml up -d
-# 查看日志
-docker logs -f mcp-endpoint-server
-```
+[MCP 接入点部署使用指南](https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-integration.md)
 
 ## 技术细节
 [技术细节](./README_dev.md)
