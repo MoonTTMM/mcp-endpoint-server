@@ -90,9 +90,7 @@ class ConnectionManager:
 
     def _transform_jsonrpc_id(self, original_id: Any, connection_uuid: str) -> str:
         """转换JSON-RPC ID"""
-        if original_id is None:
-            return f"{connection_uuid}_s_null"
-        elif isinstance(original_id, int):
+        if isinstance(original_id, int):
             return f"{connection_uuid}_n_{original_id}"
         elif isinstance(original_id, str):
             return f"{connection_uuid}_s_{original_id}"
@@ -145,9 +143,10 @@ class ConnectionManager:
         # 转换ID
         if "id" in transformed_message:
             original_id = transformed_message["id"]
-            transformed_message["id"] = self._transform_jsonrpc_id(
-                original_id, connection_uuid
-            )
+            if original_id:
+                transformed_message["id"] = self._transform_jsonrpc_id(
+                    original_id, connection_uuid
+                )
 
         return transformed_message
 
