@@ -15,6 +15,7 @@ from .utils.jsonrpc import (
     JSONRPCProtocol,
 )
 from src.utils.util import get_local_ip
+from .utils import __version__
 from contextlib import asynccontextmanager
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -90,7 +91,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MCP Endpoint Server",
     description="高效的WebSocket中转服务器",
-    version="1.0.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -117,7 +118,7 @@ async def root():
     response = JSONRPCProtocol.create_success_response(
         result={
             "message": "MCP Endpoint Server",
-            "version": "1.0.0",
+            "version": __version__,
             "status": "running",
         }
     )
@@ -222,6 +223,11 @@ def signal_handler(signum, frame):
 
 def main():
     """主函数"""
+    # 设置uvicorn日志拦截
+    from .utils.logger import logger_manager
+
+    logger_manager.setup_uvicorn_logging()
+
     # 注册信号处理器
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -241,6 +247,8 @@ def main():
         reload=debug,
         log_level=config.get("server", "log_level", "INFO").lower(),
         access_log=False,
+        log_config=None,  # 禁用uvicorn默认日志配置
+        use_colors=True,  # 启用颜色支持
     )
 
 

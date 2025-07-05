@@ -7,3 +7,4 @@ python-dotenv==1.0.0
 configparser==6.0.0
 asyncio-mqtt==0.16.1
 pycryptodome==3.23.0
+loguru==0.7.2
