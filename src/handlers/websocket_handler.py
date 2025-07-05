@@ -4,10 +4,6 @@ WebSocket处理器
 """
 
 import json
-from typing import Optional, Any
-from urllib.parse import parse_qs, urlparse
-from websockets.server import WebSocketServerProtocol
-from websockets.exceptions import ConnectionClosed
 from ..core.connection_manager import connection_manager
 from ..utils.logger import get_logger
 from ..utils.jsonrpc import (
@@ -115,17 +111,6 @@ class WebSocketHandler:
             logger.error(f"小智端消息格式错误: {message}")
         except Exception as e:
             logger.error(f"处理小智端消息时发生错误: {e}")
-
-    def _extract_agent_id(self, path: str) -> Optional[str]:
-        """从路径中提取agentId参数"""
-        try:
-            parsed_url = urlparse(f"ws://localhost{path}")
-            query_params = parse_qs(parsed_url.query)
-            agent_ids = query_params.get("agentId", [])
-            return agent_ids[0] if agent_ids else None
-        except Exception as e:
-            logger.error(f"提取agentId参数失败: {e}")
-            return None
 
 
 # 全局WebSocket处理器实例

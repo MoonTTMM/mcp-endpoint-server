@@ -7,9 +7,10 @@ import sys
 import json
 import signal
 import uvicorn
+from urllib.parse import quote
 from .utils.config import config
 from .utils.logger import get_logger
-from .utils.aes_utils import decrypt
+from .utils.aes_utils import decrypt, encrypt
 from .utils.jsonrpc import (
     JSONRPCProtocol,
 )
@@ -65,12 +66,21 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
     logger.info("MCP Endpoint Server 正在启动...")
-    logger.info(f"======================================================")
+    logger.info(f"=====下面的地址分别是智控台/单模块MCP接入点地址====")
     local_ip = get_local_ip()
     logger.info(
-        f"接口地址: http://{local_ip}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
+        f"智控台MCP参数配置: http://{local_ip}:{config.getint('server', 'port', 8004)}/mcp_endpoint/health?key={config.get('server', 'key', '')}"
     )
-    logger.info("=======上面的地址是MCP接入点地址，请勿泄露给任何人============")
+    encrypted_token = encrypt(
+        config.get("server", "key", ""), '{"agentId":"single_module"}'
+    )
+    token = quote(encrypted_token)
+    logger.info(
+        f"单模块部署MCP接入点: ws://{local_ip}:{config.getint('server', 'port', 8004)}/mcp_endpoint/mcp/?token={token}"
+    )
+    logger.info(
+        "=====请根据具体部署选择使用，请勿泄露给任何人======",
+    )
     yield
     # 关闭时
     logger.info("MCP Endpoint Server 已关闭")

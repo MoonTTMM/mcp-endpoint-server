@@ -7,7 +7,6 @@ import asyncio
 import json
 import time
 import uuid
-import re
 from typing import Dict, Any, List, Optional, Tuple
 from websockets.server import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosed
