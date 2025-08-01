@@ -4,7 +4,7 @@ version: '3'
 services:
   # MCP 接入点服务
   mcp-endpoint-server:
-    image: mcp-endpoint-server:1.1
+    image: ghcr.nju.edu.cn/xinnan-tech/mcp-endpoint-server:latest
     container_name: mcp-endpoint-server
     restart: always
     networks:
